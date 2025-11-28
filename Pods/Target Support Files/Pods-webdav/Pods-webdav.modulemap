@@ -1,0 +1,6 @@
+framework module Pods_webdav {
+  umbrella header "Pods-webdav-umbrella.h"
+
+  export *
+  module * { export * }
+}

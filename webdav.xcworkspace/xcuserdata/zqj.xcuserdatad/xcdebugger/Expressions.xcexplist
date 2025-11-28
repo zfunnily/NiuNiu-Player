@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "closure #1 in WebDAVClient.testConnection(completion:):WebDAVClient.swift">
+      </ContextState>
+      <ContextState
+         contextName = "GLOBAL">
+         <PersistentStrings>
+            <PersistentString
+               value = "httpResponse.statusCode">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "ProviderManager.saveProviders():ProviderManager.swift">
+      </ContextState>
+      <ContextState
+         contextName = "WebDAVClient.createRequest(for:method:):WebDAVClient.swift">
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>
