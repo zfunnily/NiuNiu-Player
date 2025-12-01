@@ -1,5 +1,5 @@
 ## NiuNiu-Player
-后端程序自学swift写的一个播放器
+后端程序借助trae使用swift写的一个播放器
 
 ## TODO
 - [x] webdav协议
