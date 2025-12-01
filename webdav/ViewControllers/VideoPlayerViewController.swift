@@ -89,6 +89,7 @@ class VideoPlayerViewController: UIViewController {
         )
 
         navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(title: "全屏", style: .plain, target: self, action: #selector(rotateButtonTapped)),
             UIBarButtonItem(title: "速度", style: .plain, target: self, action: #selector(speedButtonTapped))
         ]
 
@@ -122,7 +123,7 @@ class VideoPlayerViewController: UIViewController {
     }
     
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .allButUpsideDown
+        return [.portrait, .landscapeLeft, .landscapeRight]
     }
     
     override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
@@ -144,16 +145,22 @@ class VideoPlayerViewController: UIViewController {
         case .landscapeLeft, .landscapeRight:
             isFullscreen = true
             // 横屏时隐藏导航栏
-            navigationController?.setNavigationBarHidden(true, animated: true)
+            navigationController?.setNavigationBarHidden(true, animated: false)
             UIApplication.shared.isStatusBarHidden = true
+
+            // 更新导航栏全屏按钮标题
+            updateNavigationBarFullscreenButton()
         case .portrait, .portraitUpsideDown:
             isFullscreen = false
-            // // 恢复导航栏隐藏状态
-            // navigationController?.setNavigationBarHidden(true, animated: false)
+            // 恢复导航栏隐藏状态
+            navigationController?.setNavigationBarHidden(true, animated: false)
 
-            // 竖屏时显示导航栏
-            navigationController?.setNavigationBarHidden(false, animated: true)
-            UIApplication.shared.isStatusBarHidden = false
+            // 更新导航栏全屏按钮标题
+            updateNavigationBarFullscreenButton()
+
+            // // 竖屏时显示导航栏
+            // navigationController?.setNavigationBarHidden(false, animated: true)
+            // UIApplication.shared.isStatusBarHidden = false
         default:
             break
         }
@@ -164,31 +171,19 @@ class VideoPlayerViewController: UIViewController {
         updateRotateButton()
     }
     
+    // 新增：更新导航栏全屏按钮标题的方法
+    private func updateNavigationBarFullscreenButton() {
+        if let buttons = navigationItem.rightBarButtonItems, buttons.count >= 2 {
+            buttons[0].title = isFullscreen ? "竖屏" : "全屏"
+        }
+    }
+
     private func setupUI() {
         view.backgroundColor = .black
         // title = videoSource.name
         
         // 设置控制栏
         setupControls()
-        
-        // // 设置关闭按钮
-        // closeButton.setTitle("退出", for: .normal)
-        // closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        // closeButton.tintColor = .white
-        // closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        // closeButton.layer.cornerRadius = 8
-        // closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
-        // view.addSubview(closeButton)
-        
-        
-        // // 设置约束
-        // closeButton.translatesAutoresizingMaskIntoConstraints = false
-        // NSLayoutConstraint.activate([
-        //     closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-        //     closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-        //     closeButton.widthAnchor.constraint(equalToConstant: 60),
-        //     closeButton.heightAnchor.constraint(equalToConstant: 40)
-        // ])
     }
     
     private func setupControls() {
@@ -349,13 +344,53 @@ class VideoPlayerViewController: UIViewController {
     
     // 安全地设置设备方向
     private func setDeviceOrientation(_ orientation: UIDeviceOrientation) {
-        // 首先设置设备方向
-        UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
-        
         // 立即更新UI状态
         isFullscreen = orientation.isLandscape
         updateRotateButton()
+        updateNavigationBarFullscreenButton() // 更新导航栏按钮
         updatePlayerLayout()
+        
+        // 根据iOS版本使用不同的方法
+        if #available(iOS 16.0, *) {
+            // iOS 16及以上版本使用推荐的方法
+            if let windowScene = view.window?.windowScene {
+                var targetInterfaceOrientation: UIInterfaceOrientationMask
+                
+                switch orientation {
+                case .landscapeLeft:
+                    targetInterfaceOrientation = .landscapeLeft
+                case .landscapeRight:
+                    targetInterfaceOrientation = .landscapeRight
+                case .portrait:
+                    targetInterfaceOrientation = .portrait
+                case .portraitUpsideDown:
+                    targetInterfaceOrientation = .portraitUpsideDown
+                default:
+                    targetInterfaceOrientation = .portrait
+                }
+                
+                // 创建旋转偏好设置
+                let geometryPreferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: targetInterfaceOrientation)
+                
+                // 请求几何更新
+                windowScene.requestGeometryUpdate(geometryPreferences) { error in
+                    if error != nil {
+                        print("屏幕旋转失败: \(error.localizedDescription)")
+                    }
+                }
+            }
+        } else {
+            // iOS 16以下版本使用旧方法
+            DispatchQueue.main.async {
+                // 在Swift中忽略弃用警告的方式
+                if #available(iOS 16.0, *) {
+                    // iOS 16+ 已经在上面处理了
+                } else {
+                    // 直接设置方向，使用@discardableResult或者其他方式处理警告
+                    UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
+                }
+            }
+        }
     }
     
     private func updateRotateButton() {
