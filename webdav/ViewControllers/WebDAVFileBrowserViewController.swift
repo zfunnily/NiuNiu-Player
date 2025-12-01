@@ -36,13 +36,16 @@ class WebDAVFileBrowserViewController: UIViewController, UITableViewDelegate, UI
         setupUI()
         setupNavigationBar()
         loadDirectoryContents()
+
+         // 应用统一导航栏样式
+        navigationController?.applyGlobalNavigationBarStyle()
     }
     
     private func setupUI() {
         view.backgroundColor = .systemBackground
         
-        // 设置返回按钮
-        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(doneTapped))
+        // // 设置返回按钮
+        // navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(doneTapped))
         
         // 设置表格视图
         tableView.delegate = self
@@ -67,7 +70,7 @@ class WebDAVFileBrowserViewController: UIViewController, UITableViewDelegate, UI
         ])
     }
     private func setupNavigationBar() {
-        title = "文件浏览"
+        // title = "文件浏览"
         
         // 添加返回上一层按钮
         updateBackButton()
@@ -82,14 +85,18 @@ class WebDAVFileBrowserViewController: UIViewController, UITableViewDelegate, UI
         // 检查是否可以返回上一层（当前路径不是根路径）
         let canGoBack = !isRootPath(currentPath)
         
-        // 创建返回上一层按钮
-        let backButton = UIBarButtonItem(title: "上级", style: .plain, target: self, action: #selector(goBackToParent))
-        backButton.isEnabled = canGoBack
-        
-        // 创建目录路径按钮（点击可以显示路径选择器）
-        let pathButton = UIBarButtonItem(title: displayPathForNavigationBar(currentPath), style: .plain, target: self, action: #selector(showPathSelector))
-        
-        navigationItem.leftBarButtonItems = [backButton, pathButton]
+        // 如果是根路径，使用系统返回按钮
+        if canGoBack {
+            // 创建返回上一层按钮
+            let backButton = UIBarButtonItem(title: "上级", style: .plain, target: self, action: #selector(goBackToParent))
+            backButton.isEnabled = canGoBack
+            
+            navigationItem.leftBarButtonItem = backButton
+        } else {
+            // 根路径时使用系统默认返回按钮
+            navigationItem.leftBarButtonItem = nil
+            navigationItem.hidesBackButton = false
+        }
     }
     
     // 检查是否是根路径

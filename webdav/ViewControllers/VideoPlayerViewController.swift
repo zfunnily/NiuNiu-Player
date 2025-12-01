@@ -33,6 +33,7 @@ class VideoPlayerViewController: UIViewController {
     private var currentVideoGravity: VideoGravity = .resizeAspectFill
     private var isFullscreen: Bool = false
     private var originalOrientation: UIDeviceOrientation?
+    private var wasStatusBarHidden: Bool = false
 
     // 控制按钮
     private let playPauseButton = UIButton(type: .system)
@@ -68,24 +69,49 @@ class VideoPlayerViewController: UIViewController {
         setupUI()
         setupGestures()
         setupOrientationObserver()
+
+         // 应用统一导航栏样式
+        navigationController?.applyGlobalNavigationBarStyle()
+
         playVideo()
     }
     
-      override func viewWillAppear(_ animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: animated)
+
+        title = videoSource.name
+
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "退出",
+            style: .plain,
+            target: self,
+            action: #selector(closeButtonTapped)
+        )
+
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(title: "速度", style: .plain, target: self, action: #selector(speedButtonTapped))
+        ]
+
+        wasStatusBarHidden = UIApplication.shared.isStatusBarHidden
+        UIApplication.shared.isStatusBarHidden = false
+
         // 保存原始方向
         originalOrientation = UIDevice.current.orientation
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        navigationController?.setNavigationBarHidden(false, animated: animated)
+
+        // navigationController?.setNavigationBarHidden(false, animated: animated)
+
+        UIApplication.shared.isStatusBarHidden = wasStatusBarHidden
         playerManager.cleanup()
+
         // 恢复原始方向
         if let orientation = originalOrientation {
-            UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
+            setDeviceOrientation(orientation)
         }
+
         // 移除方向监听
         NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
     }
@@ -104,54 +130,65 @@ class VideoPlayerViewController: UIViewController {
     }
     
     private func setupOrientationObserver() {
-        // 监听设备方向变化
+        // 启用设备方向通知
         UIDevice.current.beginGeneratingDeviceOrientationNotifications()
         NotificationCenter.default.addObserver(self,
                                            selector: #selector(handleOrientationChange),
                                            name: UIDevice.orientationDidChangeNotification,
                                            object: nil)
     }
-    
+
     @objc private func handleOrientationChange() {
         let orientation = UIDevice.current.orientation
         switch orientation {
         case .landscapeLeft, .landscapeRight:
             isFullscreen = true
+            // 横屏时隐藏导航栏
+            navigationController?.setNavigationBarHidden(true, animated: true)
+            UIApplication.shared.isStatusBarHidden = true
         case .portrait, .portraitUpsideDown:
             isFullscreen = false
+            // // 恢复导航栏隐藏状态
+            // navigationController?.setNavigationBarHidden(true, animated: false)
+
+            // 竖屏时显示导航栏
+            navigationController?.setNavigationBarHidden(false, animated: true)
+            UIApplication.shared.isStatusBarHidden = false
         default:
             break
         }
+        
+        // 更新UI布局以适应新方向
+        updatePlayerLayout()
         // 更新旋转按钮状态
         updateRotateButton()
     }
     
-    
     private func setupUI() {
         view.backgroundColor = .black
-        title = videoSource.name
+        // title = videoSource.name
         
         // 设置控制栏
         setupControls()
         
-        // 设置关闭按钮
-        closeButton.setTitle("退出", for: .normal)
-        closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        closeButton.tintColor = .white
-        closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        closeButton.layer.cornerRadius = 8
-        closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
-        view.addSubview(closeButton)
+        // // 设置关闭按钮
+        // closeButton.setTitle("退出", for: .normal)
+        // closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        // closeButton.tintColor = .white
+        // closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        // closeButton.layer.cornerRadius = 8
+        // closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
+        // view.addSubview(closeButton)
         
         
-        // 设置约束
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            closeButton.widthAnchor.constraint(equalToConstant: 60),
-            closeButton.heightAnchor.constraint(equalToConstant: 40)
-        ])
+        // // 设置约束
+        // closeButton.translatesAutoresizingMaskIntoConstraints = false
+        // NSLayoutConstraint.activate([
+        //     closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+        //     closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+        //     closeButton.widthAnchor.constraint(equalToConstant: 60),
+        //     closeButton.heightAnchor.constraint(equalToConstant: 40)
+        // ])
     }
     
     private func setupControls() {
@@ -287,17 +324,38 @@ class VideoPlayerViewController: UIViewController {
     @objc private func doubleTapToToggleFullscreen() {
         rotateButtonTapped()
     }
-    
+
+    private func updatePlayerLayout() {
+        // 重新布局播放器以适应新的屏幕方向
+        // 由于PlayerManager将播放器层添加到视图上，我们需要确保它能正确调整大小
+        UIView.animate(withDuration: 0.3) {
+            // 强制布局更新
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
+        }
+    }
+
     @objc private func rotateButtonTapped() {
         // 切换全屏/非全屏
         if isFullscreen {
             // 切换回竖屏
-            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+            setDeviceOrientation(.portrait)
         } else {
             // 切换到横屏
-            UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+            setDeviceOrientation(.landscapeRight)
         }
         resetControlsTimer()
+    }
+    
+    // 安全地设置设备方向
+    private func setDeviceOrientation(_ orientation: UIDeviceOrientation) {
+        // 首先设置设备方向
+        UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
+        
+        // 立即更新UI状态
+        isFullscreen = orientation.isLandscape
+        updateRotateButton()
+        updatePlayerLayout()
     }
     
     private func updateRotateButton() {
@@ -388,25 +446,51 @@ class VideoPlayerViewController: UIViewController {
     
 // 确保退出按钮一直可见，不随控制栏隐藏
     @objc private func toggleControls() {
-        // 切换播放/暂停状态
-        if isPlaying {
+        isControlsVisible.toggle()
+
+        controlsContainer.isHidden = !isControlsVisible
+
+        // 显示/隐藏你自己的导航栏
+        navigationController?.setNavigationBarHidden(!isControlsVisible, animated: true)
+
+        // 暂停/播放
+        if isControlsVisible {
             playerManager.pause()
+            playPauseButton.setTitle("播放", for: .normal)
+            isPlaying = false
         } else {
             playerManager.play()
+            playPauseButton.setTitle("暂停", for: .normal)
+            isPlaying = true
         }
         
-        // 确保控制栏可见
-        if !isControlsVisible {
-            isControlsVisible = true
-            UIView.animate(withDuration: 0.3) { [weak self] in
-                guard let self = self else { return }
-                self.controlsContainer.alpha = 1.0
+        // // 确保控制栏可见
+        // if !isControlsVisible {
+        //     isControlsVisible = true
+        //     UIView.animate(withDuration: 0.3) { [weak self] in
+        //         guard let self = self else { return }
+        //         self.controlsContainer.alpha = 1.0
+        //     }
+        // }
+        
+        // // 重置自动隐藏计时器
+        // resetControlsTimer()
+    }
+
+    private func scheduleHideControls() {
+        controlsTimer?.invalidate()
+        controlsTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            if self.isPlaying {
+                self.isControlsVisible = false
+                UIView.animate(withDuration: 0.3) {
+                    self.controlsContainer.alpha = 0
+                }
+                self.navigationController?.setNavigationBarHidden(true, animated: true)
             }
         }
-        
-        // 重置自动隐藏计时器
-        resetControlsTimer()
     }
+
     private func hideControls() {
         if isControlsVisible {
             isControlsVisible = false
@@ -460,6 +544,78 @@ class VideoPlayerViewController: UIViewController {
         
         // 更新按钮标题
         let sign = currentPlaybackRate < 0 ? "-" : ""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
         let absRate = abs(currentPlaybackRate)
         speedButton.setTitle("\(sign)\(absRate)x", for: .normal)
         

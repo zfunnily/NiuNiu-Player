@@ -5,6 +5,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         print("AppDelegate: didFinishLaunchingWithOptions")
+        // 应用全局导航栏样式
+        UINavigationBar.appearance().backgroundColor = .systemBackground
+        UINavigationBar.appearance().barTintColor = .systemBackground
+        UINavigationBar.appearance().titleTextAttributes = [
+            .font: UIFont.boldSystemFont(ofSize: 18),
+            .foregroundColor: UIColor.label
+        ]
         return true
     }
     

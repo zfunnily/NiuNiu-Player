@@ -10,6 +10,9 @@ class ProviderListViewController: UIViewController, UITableViewDelegate, UITable
         setupUI()
         setupConstraints()
         setupTableView()
+
+         // 应用统一导航栏样式
+        navigationController?.applyGlobalNavigationBarStyle()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -20,6 +23,9 @@ class ProviderListViewController: UIViewController, UITableViewDelegate, UITable
     private func setupUI() {
         title = "WebDAV服务器"
         view.backgroundColor = .systemBackground
+
+        // 移除默认返回按钮，设置为空
+        navigationItem.hidesBackButton = true
         
         // 设置添加按钮
         addButton.setTitle("添加服务器", for: .normal)
