@@ -54,6 +54,14 @@ class VideoPlayerViewController: UIViewController {
     private var currentPlaybackRate: Float = 1.0
     private let playbackRates: [Float] = [-2.0, -1.0, 0.5, 1.0, 1.5, 2.0]
     private var timer: Timer?
+
+    // 添加保存原始播放速度的变量，用于长按倍速功能
+    private var originalPlaybackRate: Float = 1.0
+    // 长按倍速的目标速度
+    private let holdToSpeedUpRate: Float = 2.0
+    // 长按手势识别器
+    private var longPressGesture: UILongPressGestureRecognizer!
+    private var speedHintLabel: UILabel?
     
     init(videoSource: VideoSource) {
         self.videoSource = videoSource
@@ -314,10 +322,87 @@ class VideoPlayerViewController: UIViewController {
         
         // 设置手势优先级
         tapGesture.require(toFail: doubleTapGesture)
+
+        // 添加长按手势实现按住加速播放
+        longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress))
+        longPressGesture.minimumPressDuration = 0.2 // 长按触发时间，单位秒
+        longPressGesture.cancelsTouchesInView = false // 不取消其他手势
+        view.addGestureRecognizer(longPressGesture)
     }
     
     @objc private func doubleTapToToggleFullscreen() {
         rotateButtonTapped()
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            // 长按开始，保存当前播放速度并设置为倍速
+            originalPlaybackRate = currentPlaybackRate
+            currentPlaybackRate = holdToSpeedUpRate
+            // 更新速度按钮显示
+            speedButton.setTitle("\(holdToSpeedUpRate)x", for: .normal)
+            // 设置播放速度
+            playerManager.setPlaybackRate(currentPlaybackRate)
+            
+            // 可选：显示一个提示
+            showSpeedHint(rate: holdToSpeedUpRate)
+            
+        case .ended, .cancelled, .failed:
+            // 长按结束，恢复原始播放速度
+            currentPlaybackRate = originalPlaybackRate
+            // 更新速度按钮显示
+            let sign = currentPlaybackRate < 0 ? "-" : ""
+            let absRate = abs(currentPlaybackRate)
+            speedButton.setTitle("\(sign)\(absRate)x", for: .normal)
+            // 设置播放速度
+            playerManager.setPlaybackRate(currentPlaybackRate)
+            
+            // 可选：隐藏提示
+            hideSpeedHint()
+            
+        default:
+            break
+        }
+    }
+    private func showSpeedHint(rate: Float) {
+        // 如果提示标签不存在，创建它
+        if speedHintLabel == nil {
+            speedHintLabel = UILabel()
+            speedHintLabel?.textColor = .white
+            speedHintLabel?.font = UIFont.boldSystemFont(ofSize: 36)
+            speedHintLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+            speedHintLabel?.layer.cornerRadius = 10
+            speedHintLabel?.clipsToBounds = true
+            speedHintLabel?.textAlignment = .center
+            speedHintLabel?.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(speedHintLabel!)
+            
+            // 设置约束
+            NSLayoutConstraint.activate([
+                speedHintLabel!.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                speedHintLabel!.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                speedHintLabel!.paddingHorizontal(constant: 30),
+                speedHintLabel!.paddingVertical(constant: 15)
+            ])
+            
+            // 初始隐藏
+            speedHintLabel?.alpha = 0
+        }
+        
+        // 设置文本
+        speedHintLabel?.text = "\(rate)x"
+        
+        // 显示动画
+        UIView.animate(withDuration: 0.3) {
+            self.speedHintLabel?.alpha = 1.0
+        }
+    }
+    
+    private func hideSpeedHint() {
+        UIView.animate(withDuration: 0.3) {
+            self.speedHintLabel?.alpha = 0.0
+        }
     }
 
     private func updatePlayerLayout() {
@@ -579,78 +664,6 @@ class VideoPlayerViewController: UIViewController {
         
         // 更新按钮标题
         let sign = currentPlaybackRate < 0 ? "-" : ""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
         let absRate = abs(currentPlaybackRate)
         speedButton.setTitle("\(sign)\(absRate)x", for: .normal)
         
@@ -682,6 +695,16 @@ class VideoPlayerViewController: UIViewController {
         controlsTimer?.invalidate()
     }
 
+}
+
+fileprivate extension UIView {
+    func paddingHorizontal(constant: CGFloat) -> NSLayoutConstraint {
+        return NSLayoutConstraint(item: self, attribute: .width, relatedBy: .greaterThanOrEqual, toItem: nil, attribute: .notAnAttribute, multiplier: 1.0, constant: constant * 2)
+    }
+    
+    func paddingVertical(constant: CGFloat) -> NSLayoutConstraint {
+        return NSLayoutConstraint(item: self, attribute: .height, relatedBy: .greaterThanOrEqual, toItem: nil, attribute: .notAnAttribute, multiplier: 1.0, constant: constant * 2)
+    }
 }
 
 // 扩展数组以安全访问元素
