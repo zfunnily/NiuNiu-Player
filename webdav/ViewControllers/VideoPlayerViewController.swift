@@ -40,6 +40,10 @@ class VideoPlayerViewController: UIViewController {
     private let slider = UISlider()
     private let timeLabel = UILabel()
     private let durationLabel = UILabel()
+    
+    // 添加一个变量来跟踪进度条是否正在被拖动
+    private var isSliderBeingDragged = false
+
     private let closeButton = UIButton(type: .system)
     private let aspectRatioButton = UIButton(type: .system)
     private let rotateButton = UIButton(type: .system)
@@ -48,6 +52,9 @@ class VideoPlayerViewController: UIViewController {
     private let controlsContainer = UIView()
     private var isControlsVisible = true
     private var controlsTimer: Timer?
+    // 添加进度条预览视图
+    private let previewThumbnailView = UIView()
+    private let previewLabel = UILabel()
 
     // 添加速度控制按钮
     private let speedButton = UIButton(type: .system)
@@ -100,6 +107,12 @@ class VideoPlayerViewController: UIViewController {
             UIBarButtonItem(title: "全屏", style: .plain, target: self, action: #selector(rotateButtonTapped)),
             UIBarButtonItem(title: "速度", style: .plain, target: self, action: #selector(speedButtonTapped))
         ]
+
+        // 确保导航栏初始可见
+        navigationController?.setNavigationBarHidden(false, animated: false)
+        isControlsVisible = true
+        controlsContainer.alpha = 1.0
+        controlsContainer.isHidden = false // 明确设置为不隐藏
 
         wasStatusBarHidden = UIApplication.shared.isStatusBarHidden
         UIApplication.shared.isStatusBarHidden = false
@@ -221,7 +234,17 @@ class VideoPlayerViewController: UIViewController {
         slider.minimumValue = 0
         slider.maximumValue = 1
         slider.tintColor = .white
+        slider.minimumTrackTintColor = .systemBlue  // 设置已播放部分的颜色
+        slider.maximumTrackTintColor = .white.withAlphaComponent(0.3)  // 设置未播放部分的颜色
+        slider.thumbTintColor = .systemBlue  // 设置滑块颜色
+        slider.isUserInteractionEnabled = true
+        slider.isHidden = false
+
+        // 添加拖动开始和结束的事件监听
         slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
+        slider.addTarget(self, action: #selector(sliderTouchBegan), for: .touchDown)
+        slider.addTarget(self, action: #selector(sliderTouchEnded), for: [.touchUpInside, .touchUpOutside])
+        slider.addTarget(self, action: #selector(sliderTouchCancel), for: .touchCancel) // 添加取消事件
         controlsContainer.addSubview(slider)
         
         // 时间标签
@@ -235,6 +258,21 @@ class VideoPlayerViewController: UIViewController {
         durationLabel.font = UIFont.systemFont(ofSize: 12)
         durationLabel.text = "0:00"
         controlsContainer.addSubview(durationLabel)
+
+        // 初始化进度条预览视图
+        previewThumbnailView.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        previewThumbnailView.layer.cornerRadius = 8
+        previewThumbnailView.clipsToBounds = true
+        previewThumbnailView.isHidden = true
+        previewThumbnailView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(previewThumbnailView)
+
+        // 预览时间标签
+        previewLabel.textColor = .white
+        previewLabel.font = UIFont.systemFont(ofSize: 12)
+        previewLabel.textAlignment = .center
+        previewLabel.translatesAutoresizingMaskIntoConstraints = false
+        previewThumbnailView.addSubview(previewLabel)
 
         // 添加速度控制按钮
         speedButton.setTitle("1.0x", for: .normal)
@@ -307,6 +345,13 @@ class VideoPlayerViewController: UIViewController {
             speedButton.leadingAnchor.constraint(equalTo: aspectRatioButton.trailingAnchor, constant: 16),
             speedButton.widthAnchor.constraint(equalToConstant: 60),
             speedButton.heightAnchor.constraint(equalToConstant: 30)
+        ])
+
+        NSLayoutConstraint.activate([
+            previewLabel.centerXAnchor.constraint(equalTo: previewThumbnailView.centerXAnchor),
+            previewLabel.centerYAnchor.constraint(equalTo: previewThumbnailView.centerYAnchor),
+            previewThumbnailView.widthAnchor.constraint(equalToConstant: 80),
+            previewThumbnailView.heightAnchor.constraint(equalToConstant: 40)
         ])
     }
     
@@ -512,13 +557,23 @@ class VideoPlayerViewController: UIViewController {
         
     private func playVideo() {
         let configuration = PlayerConfiguration(autoPlay: true, loopEnabled: false)
-        
+    
         playerManager.playVideo(
             from: videoSource,
             onViewController: self,
             configuration: configuration,
             onSuccess: { [weak self] in
                 self?.setupProgressUpdate()
+                // 确保控制栏初始可见，不自动隐藏
+                if let self = self {
+                    self.isControlsVisible = true
+                    self.controlsContainer.alpha = 1.0
+                    if let navigationController = self.navigationController {
+                        navigationController.setNavigationBarHidden(false, animated: false)
+                    }
+                    // 可选：如果选择禁用自动隐藏，则不重置定时器
+                    // self.resetControlsTimer() // 注释掉这行可以完全禁用自动隐藏
+                }
             },
             onFailure: { [weak self] error in
                 let errorMessage = error?.localizedDescription ?? "无法播放视频"
@@ -532,10 +587,22 @@ class VideoPlayerViewController: UIViewController {
     }
     
     private func setupProgressUpdate() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateProgress()
+        // 先销毁旧的定时器
+        timer?.invalidate()
+        
+        // 创建新的定时器
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.updateProgress()
         }
-        RunLoop.current.add(timer!, forMode: .common)
+        
+        // 添加到主运行循环
+        RunLoop.main.add(timer!, forMode: .common)
+        
+        // 立即更新一次进度
+        DispatchQueue.main.async {
+            self.updateProgress()
+        }
     }
 
     deinit {
@@ -543,13 +610,24 @@ class VideoPlayerViewController: UIViewController {
     }
     
     private func updateProgress() {
+        // 如果用户正在拖动滑块，不更新进度条位置
+        if isSliderBeingDragged {
+            return
+        }
+        
         let currentTime = PlayerManager.shared.getCurrentTime()
         let duration = PlayerManager.shared.getDuration()
+        
+        // 添加调试信息
+        print("当前时间: \(currentTime), 总时长: \(duration)")
         
         if duration > 0 {
             slider.value = Float(currentTime / duration)
             timeLabel.text = formatTime(currentTime)
             durationLabel.text = formatTime(duration)
+            
+            // 确保进度条可见
+            slider.isHidden = false
         }
     }
 
@@ -564,51 +642,46 @@ class VideoPlayerViewController: UIViewController {
         playPauseButton.setTitle(isPlaying ? "暂停" : "播放", for: .normal)
     }
     
-// 确保退出按钮一直可见，不随控制栏隐藏
     @objc private func toggleControls() {
         isControlsVisible.toggle()
 
-        controlsContainer.isHidden = !isControlsVisible
-
-        // 显示/隐藏你自己的导航栏
-        navigationController?.setNavigationBarHidden(!isControlsVisible, animated: true)
-
-        // 暂停/播放
-        if isControlsVisible {
-            playerManager.pause()
-            playPauseButton.setTitle("播放", for: .normal)
-            isPlaying = false
-        } else {
-            playerManager.play()
-            playPauseButton.setTitle("暂停", for: .normal)
-            isPlaying = true
+        // 使用动画平滑过渡
+        UIView.animate(withDuration: 0.3) {
+            // 控制栏和进度条的显隐
+            self.controlsContainer.isHidden = !self.isControlsVisible
+            self.controlsContainer.alpha = self.isControlsVisible ? 1.0 : 0.0
+            
+            // 导航栏的显隐
+            if let navigationController = self.navigationController {
+                navigationController.setNavigationBarHidden(!self.isControlsVisible, animated: true)
+            }
         }
         
-        // // 确保控制栏可见
-        // if !isControlsVisible {
-        //     isControlsVisible = true
-        //     UIView.animate(withDuration: 0.3) { [weak self] in
-        //         guard let self = self else { return }
-        //         self.controlsContainer.alpha = 1.0
-        //     }
-        // }
-        
-        // // 重置自动隐藏计时器
-        // resetControlsTimer()
+        // 如果显示了控制栏，重置自动隐藏计时器
+        if isControlsVisible {
+            resetControlsTimer()
+        }
     }
 
     private func scheduleHideControls() {
         controlsTimer?.invalidate()
-        controlsTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { [weak self] _ in
+        controlsTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             if self.isPlaying {
                 self.isControlsVisible = false
                 UIView.animate(withDuration: 0.3) {
                     self.controlsContainer.alpha = 0
+                    self.controlsContainer.isHidden = true
+                    // 同步隐藏导航栏
+                    if let navigationController = self.navigationController {
+                        navigationController.setNavigationBarHidden(true, animated: true)
+                    }
                 }
-                self.navigationController?.setNavigationBarHidden(true, animated: true)
             }
         }
+
+        // 方案2：完全禁用自动隐藏（注释掉上面的代码，取消注释下面的代码）
+        // controlsTimer?.invalidate() // 只取消定时器，不创建新的
     }
 
     private func hideControls() {
@@ -617,25 +690,34 @@ class VideoPlayerViewController: UIViewController {
             UIView.animate(withDuration: 0.3) { [weak self] in
                 guard let self = self else { return }
                 self.controlsContainer.alpha = 0.0
-                // 移除closeButton的alpha变化
-                // self.closeButton.alpha = 0.0
+                self.controlsContainer.isHidden = true
+                // 同步隐藏导航栏
+                if let navigationController = self.navigationController {
+                    navigationController.setNavigationBarHidden(true, animated: true)
+                }
             }
         }
     }
 
-
-    
     private func resetControlsTimer() {
         controlsTimer?.invalidate()
-
+    
         if isControlsVisible {
             controlsTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
-                self?.hideControls()
+                // 使用动画确保同步隐藏
+                guard let self = self else { return }
+                self.isControlsVisible = false
+                UIView.animate(withDuration: 0.3) {
+                    self.controlsContainer.alpha = 0.0
+                    self.controlsContainer.isHidden = true
+                    if let navigationController = self.navigationController {
+                        navigationController.setNavigationBarHidden(true, animated: true)
+                    }
+                }
             }
             RunLoop.current.add(controlsTimer!, forMode: .common)
         }
     }
-    
     
     // 确保playPauseTapped方法正确工作
     @objc private func playPauseTapped() {
@@ -647,9 +729,70 @@ class VideoPlayerViewController: UIViewController {
         resetControlsTimer()
     }
     
-    @objc private func sliderValueChanged() {
+    @objc private func sliderTouchBegan() {
+        // 当用户开始拖动滑块时，暂停进度更新
+        isSliderBeingDragged = true
+        // 暂停视频播放，以便用户精确定位
+        playerManager.pause()
+        isPlaying = false
+        updatePlayPauseButton()
+    }
+    
+    @objc private func sliderTouchEnded() {
+        // 当用户停止拖动滑块时，恢复进度更新
+        isSliderBeingDragged = false
+        // 应用用户选择的进度
         playerManager.seek(to: Double(slider.value))
+        // 继续播放
+        playerManager.play()
+        isPlaying = true
+        updatePlayPauseButton()
         resetControlsTimer()
+        
+        // 隐藏预览
+        previewThumbnailView.isHidden = true
+    }
+
+    @objc private func sliderTouchCancel() {
+        // 当拖动被取消时，恢复进度更新
+        isSliderBeingDragged = false
+        // 隐藏预览
+        previewThumbnailView.isHidden = true
+    }
+    
+    @objc private func sliderValueChanged() {
+        // 计算当前预览时间
+        let duration = PlayerManager.shared.getDuration()
+        let seekTime = Double(slider.value) * duration
+        
+        // 更新预览
+        updatePreview(at: seekTime)
+    }
+
+    private func updatePreview(at time: Double) {
+        // 更新预览标签
+        previewLabel.text = formatTime(time)
+        
+        // 计算预览视图的位置（在进度条上方）
+        let sliderFrame = slider.frame
+        let touchPointX = CGFloat(slider.value) * sliderFrame.width + sliderFrame.origin.x
+        
+        // 调整预览视图位置，确保不超出屏幕
+        var previewX = touchPointX - previewThumbnailView.bounds.width / 2
+        let screenWidth = view.bounds.width
+        
+        if previewX < 16 {
+            previewX = 16
+        } else if previewX + previewThumbnailView.bounds.width > screenWidth - 16 {
+            previewX = screenWidth - 16 - previewThumbnailView.bounds.width
+        }
+        
+        // 设置位置
+        previewThumbnailView.frame.origin.x = previewX
+        previewThumbnailView.frame.origin.y = sliderFrame.origin.y - previewThumbnailView.bounds.height - 10
+        
+        // 显示预览
+        previewThumbnailView.isHidden = false
     }
     
     // 速度控制按钮点击事件
