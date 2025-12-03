@@ -32,8 +32,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "39"
             endingLineNumber = "39"
-            landmarkName = "VLCPlayerEngine"
-            landmarkType = "3">
+            landmarkName = "init()"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -64,7 +64,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "84"
             endingLineNumber = "84"
-            landmarkName = "setVideoURL(_:)"
+            landmarkName = "setupPlayer(on:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -80,7 +80,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "113"
             endingLineNumber = "113"
-            landmarkName = "setVideoGravity(_:)"
+            landmarkName = "setVideoURL(_:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -210,6 +210,52 @@
             endingLineNumber = "95"
             landmarkName = "createRequest(for:method:headers:)"
             landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "AE976098-BBE3-47F0-B512-9928CC1EAF27"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "webdav/ViewControllers/VideoPlayerViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "753"
+            endingLineNumber = "753"
+            landmarkName = "sliderTouchEnded()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "AE976098-BBE3-47F0-B512-9928CC1EAF27 - 945837e30bfffaca"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "webdav.VideoPlayerViewController.sliderTouchEnded() -&gt; ()"
+                  moduleName = "webdav.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/zqj/Documents/something/webdav/webdav/ViewControllers/VideoPlayerViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "753"
+                  endingLineNumber = "753">
+               </Location>
+               <Location
+                  uuid = "AE976098-BBE3-47F0-B512-9928CC1EAF27 - 945837e30bfffaab"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "webdav.VideoPlayerViewController.sliderTouchEnded() -&gt; ()"
+                  moduleName = "webdav.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/zqj/Documents/something/webdav/webdav/ViewControllers/VideoPlayerViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "754"
+                  endingLineNumber = "754">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

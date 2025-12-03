@@ -37,6 +37,7 @@ class VideoPlayerViewController: UIViewController {
 
     // 控制按钮
     private let playPauseButton = UIButton(type: .system)
+    //进度条
     private let slider = UISlider()
     private let timeLabel = UILabel()
     private let durationLabel = UILabel()
@@ -87,7 +88,8 @@ class VideoPlayerViewController: UIViewController {
 
          // 应用统一导航栏样式
         navigationController?.applyGlobalNavigationBarStyle()
-
+        // 确保控制栏在视图层级的最顶层
+        view.bringSubviewToFront(controlsContainer)
         playVideo()
     }
     
@@ -103,10 +105,10 @@ class VideoPlayerViewController: UIViewController {
             action: #selector(closeButtonTapped)
         )
 
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(title: "全屏", style: .plain, target: self, action: #selector(rotateButtonTapped)),
-            UIBarButtonItem(title: "速度", style: .plain, target: self, action: #selector(speedButtonTapped))
-        ]
+//        navigationItem.rightBarButtonItems = [
+//            UIBarButtonItem(title: "全屏", style: .plain, target: self, action: #selector(rotateButtonTapped)),
+//            UIBarButtonItem(title: "速度", style: .plain, target: self, action: #selector(speedButtonTapped))
+//        ]
 
         // 确保导航栏初始可见
         navigationController?.setNavigationBarHidden(false, animated: false)
@@ -619,15 +621,22 @@ class VideoPlayerViewController: UIViewController {
         let duration = PlayerManager.shared.getDuration()
         
         // 添加调试信息
-        print("当前时间: \(currentTime), 总时长: \(duration)")
+        print("更新进度 - 当前时间: \(currentTime), 总时长: \(duration)")
         
         if duration > 0 {
             slider.value = Float(currentTime / duration)
             timeLabel.text = formatTime(currentTime)
             durationLabel.text = formatTime(duration)
             
-            // 确保进度条可见
-            slider.isHidden = false
+            // 如果控制栏应该可见但被隐藏了，重新显示它
+            if isControlsVisible && controlsContainer.isHidden {
+                controlsContainer.isHidden = false
+                controlsContainer.alpha = 1.0
+            }
+        } else {
+            // 时长为0时的处理
+            print("警告：视频时长为0，可能媒体尚未加载完成")
+            // 保持现有显示，不更新进度条
         }
     }
 
@@ -643,18 +652,23 @@ class VideoPlayerViewController: UIViewController {
     }
     
     @objc private func toggleControls() {
-        isControlsVisible.toggle()
+        self.isControlsVisible.toggle()
 
-        // 使用动画平滑过渡
+        view.bringSubviewToFront(controlsContainer)
+
+         // 使用动画平滑过渡
         UIView.animate(withDuration: 0.3) {
-            // 控制栏和进度条的显隐
-            self.controlsContainer.isHidden = !self.isControlsVisible
+            // 先设置 alpha，最后设置 isHidden
             self.controlsContainer.alpha = self.isControlsVisible ? 1.0 : 0.0
             
             // 导航栏的显隐
             if let navigationController = self.navigationController {
                 navigationController.setNavigationBarHidden(!self.isControlsVisible, animated: true)
             }
+        } completion: { [weak self] _ in
+            guard let self = self else { return }
+            // 动画完成后再设置 isHidden，避免状态不一致
+            self.controlsContainer.isHidden = !self.isControlsVisible
         }
         
         // 如果显示了控制栏，重置自动隐藏计时器
@@ -690,11 +704,13 @@ class VideoPlayerViewController: UIViewController {
             UIView.animate(withDuration: 0.3) { [weak self] in
                 guard let self = self else { return }
                 self.controlsContainer.alpha = 0.0
-                self.controlsContainer.isHidden = true
-                // 同步隐藏导航栏
                 if let navigationController = self.navigationController {
                     navigationController.setNavigationBarHidden(true, animated: true)
                 }
+            } completion: { [weak self] _ in
+                guard let self = self else { return }
+                // 动画完成后再设置 isHidden
+                self.controlsContainer.isHidden = true
             }
         }
     }
@@ -703,17 +719,9 @@ class VideoPlayerViewController: UIViewController {
         controlsTimer?.invalidate()
     
         if isControlsVisible {
-            controlsTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
-                // 使用动画确保同步隐藏
+            controlsTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
-                self.isControlsVisible = false
-                UIView.animate(withDuration: 0.3) {
-                    self.controlsContainer.alpha = 0.0
-                    self.controlsContainer.isHidden = true
-                    if let navigationController = self.navigationController {
-                        navigationController.setNavigationBarHidden(true, animated: true)
-                    }
-                }
+                self.hideControls()
             }
             RunLoop.current.add(controlsTimer!, forMode: .common)
         }
@@ -741,8 +749,23 @@ class VideoPlayerViewController: UIViewController {
     @objc private func sliderTouchEnded() {
         // 当用户停止拖动滑块时，恢复进度更新
         isSliderBeingDragged = false
-        // 应用用户选择的进度
-        playerManager.seek(to: Double(slider.value))
+        
+        // 获取视频总时长
+        let duration = PlayerManager.shared.getDuration()
+        
+        // 计算绝对时间：相对值 × 总时长
+        let seekTime = Double(slider.value) * duration
+        
+        // 确保时长有效
+        if duration > 0 {
+            // 明确调用接受TimeInterval参数的seek方法
+            playerManager.seek(to: seekTime)
+            
+            print("拖动进度条到：\(seekTime)秒，总时长：\(duration)秒")
+        } else {
+            print("警告：视频时长无效，无法定位")
+        }
+        
         // 继续播放
         playerManager.play()
         isPlaying = true
@@ -764,7 +787,10 @@ class VideoPlayerViewController: UIViewController {
         // 计算当前预览时间
         let duration = PlayerManager.shared.getDuration()
         let seekTime = Double(slider.value) * duration
-        
+
+        // 添加调试日志
+        print("拖动滑块到位置：\(slider.value)，对应时间：\(seekTime)秒")
+
         // 更新预览
         updatePreview(at: seekTime)
     }

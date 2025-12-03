@@ -32,6 +32,8 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
     var onTimeUpdated: ((TimeInterval) -> Void)?
     var onError: ((Error?) -> Void)?
     
+    private var durationPollingTimer: Timer?
+
     // 初始化
     override init() {
         super.init()
@@ -98,6 +100,9 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
             "http-reconnect": NSNumber(value: 1)
         ])
         
+        // 使用正确的解析方法
+        media.parse()
+        
         // 添加到媒体列表
         list.add(media)
         
@@ -107,8 +112,56 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
         // 准备播放
         listPlayer.play()
         updateState(.loading)
+        
+        // 使用定时器轮询检查时长，直到获取到有效时长
+        startDurationPolling()
     }
-    
+
+    private func startDurationPolling() {
+        // 先清除可能存在的轮询计时器
+        stopDurationPolling()
+        
+        // 创建新的轮询计时器
+        var pollingCount = 0
+        let maxPollingCount = 20 // 最多轮询20次，每次1秒
+        
+        durationPollingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self, let mediaPlayer = self.vlcListPlayer?.mediaPlayer else {
+                timer.invalidate()
+                return
+            }
+            
+            pollingCount += 1
+            
+            // 尝试获取时长
+            if let media = mediaPlayer.media {
+                let length = media.length.intValue
+                
+                if length > 0 {
+                    // 获取到有效时长
+                    self.duration = Double(length) / 1000.0
+                    print("轮询获取到有效时长: \(self.duration)秒")
+                    self.updateTimeInfo() // 更新时间信息
+                    timer.invalidate() // 停止轮询
+                    return
+                }
+            }
+            
+            // 达到最大轮询次数，停止轮询
+            if pollingCount >= maxPollingCount {
+                print("轮询超时，无法获取有效时长")
+                timer.invalidate()
+            } else {
+                print("第\(pollingCount)次轮询，等待时长信息...")
+            }
+        }
+    }
+
+    private func stopDurationPolling() {
+        durationPollingTimer?.invalidate()
+        durationPollingTimer = nil
+    }  
+
     func setVideoGravity(_ gravity: VideoGravity) {
         // VLC的videoGravity类型处理
         guard let listPlayer = vlcListPlayer else { return }
@@ -151,8 +204,21 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
         guard let listPlayer = vlcListPlayer else { return }
         let mediaPlayer = listPlayer.mediaPlayer
         
+        // 获取当前播放时间
         currentTime = Double(mediaPlayer.time.intValue) / 1000.0
-        duration = Double(mediaPlayer.media?.length.intValue ?? 0) / 1000.0
+        
+        // 简单可靠的时长获取逻辑
+        if let media = mediaPlayer.media {
+            let length = media.length.intValue
+            duration = Double(length) / 1000.0
+            
+            // 添加调试日志
+            print("更新时间信息 - 当前时间: \(currentTime), 总时长: \(duration)")
+        } else {
+            duration = 0
+            print("警告：无法获取媒体对象")
+        }
+        
         progress = duration > 0 ? Float(currentTime / duration) : 0
         onTimeUpdated?(currentTime)
     }
@@ -181,6 +247,15 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
             updateState(.playing)
             startTimer()
             mediaListPlayer.mediaPlayer.rate = playbackRate
+
+            // 播放开始时尝试更新时长
+            if let media = mediaListPlayer.mediaPlayer.media {
+                let length = media.length.intValue
+                if length > 0 {
+                    duration = Double(length) / 1000.0
+                    print("播放开始，更新时长: \(duration)秒")
+                }
+            }
         case .paused:
             isPlaying = false
             updateState(.paused)
@@ -222,6 +297,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
     // 资源清理
     func cleanup() {
         stopTimer()
+        stopDurationPolling() // 停止时长轮询
         vlcListPlayer?.stop()
         vlcListPlayer = nil
         mediaList = nil
