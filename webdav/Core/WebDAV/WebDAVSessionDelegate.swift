@@ -32,19 +32,19 @@ class WebDAVSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegat
         
         // 处理HTTP Basic认证挑战
         else if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic {
-            print("收到HTTP Basic认证挑战")
-            print("认证领域: \(challenge.protectionSpace.realm ?? "未知")")
-            print("认证主机: \(challenge.protectionSpace.host)")
+            DLog("收到HTTP Basic认证挑战")
+            DLog("认证领域: \(challenge.protectionSpace.realm ?? "未知")")
+            DLog("认证主机: \(challenge.protectionSpace.host)")
             
             // 检查是否有用户名密码
             if let username = username, let password = password {
-                print("提供认证凭证，用户名: \(username)")
+                DLog("提供认证凭证，用户名: \(username)")
                 // 创建凭证并提供给服务器
                 let credential = URLCredential(user: username, password: password, persistence: .forSession)
                 completionHandler(.useCredential, credential)
                 return
             } else {
-                print("没有可用的认证信息")
+                DLog("没有可用的认证信息")
             }
         }
         
@@ -55,7 +55,7 @@ class WebDAVSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegat
     // 可以添加其他委托方法来处理会话级别的事件
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         if let error = error {
-            print("URLSession失效: \(error.localizedDescription)")
+            DLog("URLSession失效: \(error.localizedDescription)")
         }
     }
 }

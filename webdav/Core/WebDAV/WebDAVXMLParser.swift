@@ -346,7 +346,7 @@ class DirectoryListingParserDelegate: NSObject, XMLParserDelegate {
     
     // 解析错误处理
     func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
-        print("WebDAV XML解析错误: \(parseError.localizedDescription)")
+        DLog("WebDAV XML解析错误: \(parseError.localizedDescription)")
     }
     
     // 辅助方法
@@ -396,7 +396,7 @@ class DirectoryListingParserDelegate: NSObject, XMLParserDelegate {
             }
         }
         
-        print("无法解析日期: \(trimmedString)")
+        DLog("无法解析日期: \(trimmedString)")
         return nil
     }
     
@@ -571,13 +571,13 @@ extension WebDAVXMLParser {
                 case .success(let items):
                     // 成功解析目录项
                     for item in items {
-                        print("\(item.type == .directory ? "目录" : "文件"): \(item.name), 大小: \(item.size ?? 0)字节")
+                        DLog("\(item.type == .directory ? "目录" : "文件"): \(item.name), 大小: \(item.size ?? 0)字节")
                     }
                 case .failure(let error):
-                    print("解析失败: \(error)")
+                    DLog("解析失败: \(error)")
                 }
             case .failure(let error):
-                print("获取目录失败: \(error)")
+                DLog("获取目录失败: \(error)")
             }
         }
         
@@ -586,10 +586,10 @@ extension WebDAVXMLParser {
             switch result {
             case .success(let xmlData):
                 if case .success(let properties) = WebDAVXMLParser.parseProperties(xmlData: xmlData) {
-                    print("文件属性: \(properties)")
+                    DLog("文件属性: \(properties)")
                 }
             case .failure(let error):
-                print("获取属性失败: \(error)")
+                DLog("获取属性失败: \(error)")
             }
         }
         
@@ -599,9 +599,9 @@ extension WebDAVXMLParser {
             case .failure(let error):
                 if let xmlData = error.responseData {
                     if let errorMessage = WebDAVXMLParser.parseErrorResponse(xmlData: xmlData) {
-                        print("服务器错误: \(errorMessage)")
+                        DLog("服务器错误: \(errorMessage)")
                     } else {
-                        print("请求失败: \(error.localizedDescription)")
+                        DLog("请求失败: \(error.localizedDescription)")
                     }
                 }
             default:

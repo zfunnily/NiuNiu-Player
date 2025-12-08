@@ -7,7 +7,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // 确保是窗口场景
         guard let windowScene = (scene as? UIWindowScene) else {
-            print("Scene不是UIWindowScene")
+            DLog("Scene不是UIWindowScene")
             return
         }
         
@@ -20,26 +20,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
         // 显示窗口 - 这是关键步骤
         window?.makeKeyAndVisible()
-        print("SceneDelegate: 窗口已设置并显示")
+        DLog("SceneDelegate: 窗口已设置并显示")
     }
     
     func sceneDidDisconnect(_ scene: UIScene) {
-        print("SceneDelegate: sceneDidDisconnect")
+        DLog("SceneDelegate: sceneDidDisconnect")
     }
     
     func sceneDidBecomeActive(_ scene: UIScene) {
-        print("SceneDelegate: sceneDidBecomeActive")
+        DLog("SceneDelegate: sceneDidBecomeActive")
     }
     
     func sceneWillResignActive(_ scene: UIScene) {
-        print("SceneDelegate: sceneWillResignActive")
+        DLog("SceneDelegate: sceneWillResignActive")
     }
     
     func sceneWillEnterForeground(_ scene: UIScene) {
-        print("SceneDelegate: sceneWillEnterForeground")
+        DLog("SceneDelegate: sceneWillEnterForeground")
     }
     
     func sceneDidEnterBackground(_ scene: UIScene) {
-        print("SceneDelegate: sceneDidEnterBackground")
+        DLog("SceneDelegate: sceneDidEnterBackground")
     }
 }

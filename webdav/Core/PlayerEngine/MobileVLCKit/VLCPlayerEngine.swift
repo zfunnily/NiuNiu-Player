@@ -116,7 +116,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
         let initialLength = media.length.intValue
         if initialLength > 0 {
             self.duration = Double(initialLength) / 1000.0
-            print("[初始解析] 立即获取到时长: \(self.duration)秒")
+            DLog("[初始解析] 立即获取到时长: \(self.duration)秒")
         }
         
         // 添加到媒体列表
@@ -162,7 +162,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
                 let length = media.length.intValue
                 if length > 0 {
                     self.duration = Double(length) / 1000.0
-                    print("[轮询成功] 获取到有效时长: \(self.duration)秒 (第\(pollingCount)次)")
+                    DLog("[轮询成功] 获取到有效时长: \(self.duration)秒 (第\(pollingCount)次)")
                     self.updateTimeInfo()
                     timer.invalidate()
                     return
@@ -171,12 +171,12 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
             
             // 达到最大轮询次数，停止轮询
             if pollingCount >= maxPollingCount {
-                print("[轮询超时] 无法获取有效时长")
+                DLog("[轮询超时] 无法获取有效时长")
                 timer.invalidate()
             } else {
                 // 只在调试时打印，避免日志过多
                 if pollingCount % 5 == 0 {
-                    print("[轮询中] 第\(pollingCount)次轮询，等待时长信息...")
+                    DLog("[轮询中] 第\(pollingCount)次轮询，等待时长信息...")
                 }
             }
         }
@@ -268,7 +268,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
             let length = media.length.intValue
             if length > 0 {
                 foundDuration = Double(length) / 1000.0
-                print("[方法] 更新时长: \(foundDuration)秒")
+                DLog("[方法] 更新时长: \(foundDuration)秒")
             }
         }
         
@@ -280,7 +280,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
         // 计算进度
         self.progress = self.duration > 0 ? Float(self.currentTime / self.duration) : 0
         
-        print("[更新时间] 当前时间: \(currentTime), 总时长: \(duration), 进度: \(progress)")
+        DLog("[更新时间] 当前时间: \(currentTime), 总时长: \(duration), 进度: \(progress)")
         
         // 触发更新回调
         onTimeUpdated?(self.currentTime)
@@ -355,7 +355,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
 //                let length = media.length.intValue
 //                if length > 0 {
 //                    duration = Double(length) / 1000.0
-//                    print("播放开始，更新时长: \(duration)秒")
+//                    DLog("播放开始，更新时长: \(duration)秒")
 //                }
 //            }
 //
@@ -396,7 +396,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
         // 计算进度
         self.progress = self.duration > 0 ? Float(self.currentTime / self.duration) : 0
         
-        print("[代理更新] 当前时间: \(self.currentTime), 总时长: \(self.duration), 进度: \(self.progress)")
+        DLog("[代理更新] 当前时间: \(self.currentTime), 总时长: \(self.duration), 进度: \(self.progress)")
         
         onTimeUpdated?(self.currentTime)
     }

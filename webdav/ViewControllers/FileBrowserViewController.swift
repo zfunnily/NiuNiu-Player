@@ -352,7 +352,7 @@ class FileBrowserViewController: UIViewController, UITableViewDelegate, UITableV
                         // 设置分享项的文件名
                         activityViewController.completionWithItemsHandler = { (activityType, completed, returnedItems, error) in
                             if completed {
-                                print("文件分享成功")
+                                DLog("文件分享成功")
                             }
                         }
                         

@@ -23,7 +23,7 @@ struct WebDAVProvider: Codable, Identifiable, Equatable {
         self.usessl = usessl
         
         // 添加调试信息，确认输入的原始密码
-        print("初始化WebDAVProvider，原始密码长度: \(password.count)")
+        DLog("初始化WebDAVProvider，原始密码长度: \(password.count)")
         
         // 直接在初始化中进行密码编码，避免调用可能访问未初始化属性的方法
         self.password = password.data(using: .utf8)?.base64EncodedString() ?? ""
@@ -44,18 +44,18 @@ struct WebDAVProvider: Codable, Identifiable, Equatable {
     
     // 获取解密后的密码
     func getDecryptedPassword() -> String {
-        print("尝试解密密码，编码长度: \(password.count)")
+        DLog("尝试解密密码，编码长度: \(password.count)")
         guard let data = Data(base64Encoded: password) else {
-            print("密码不是有效的base64编码")
+            DLog("密码不是有效的base64编码")
             return ""
         }
         
         guard let decrypted = String(data: data, encoding: .utf8) else {
-            print("无法将数据转换回字符串")
+            DLog("无法将数据转换回字符串")
             return ""
         }
         
-        print("密码解密成功")
+        DLog("密码解密成功")
         return decrypted
     }
     

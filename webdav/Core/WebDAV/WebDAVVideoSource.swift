@@ -67,14 +67,14 @@ class WebDAVVideoSource: VideoSource {
             components.password = password
         }
         
-        print("构建的视频URL: \(components.url?.absoluteString ?? "无效URL")")
+        DLog("构建的视频URL: \(components.url?.absoluteString ?? "无效URL")")
         return components.url
     }
 
     // 修改getPlayerItem方法，添加网络配置
     func getPlayerItem() -> AVPlayerItem? {
         guard let fileURL = getStreamURL() else { 
-            print("无法构建视频URL")
+            DLog("无法构建视频URL")
             return nil 
         }
         
@@ -108,7 +108,7 @@ class WebDAVVideoSource: VideoSource {
         // 这里不再预加载，因为在VideoPlayerManager中已经处理
         
         let playerItem = AVPlayerItem(asset: asset)
-        print("创建播放器项成功")
+        DLog("创建播放器项成功")
         return playerItem
     }
 }

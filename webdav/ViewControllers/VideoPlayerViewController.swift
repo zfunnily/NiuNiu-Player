@@ -507,7 +507,7 @@ class VideoPlayerViewController: UIViewController {
                 // 请求几何更新
                 windowScene.requestGeometryUpdate(geometryPreferences) { error in
                     if error != nil {
-                        print("屏幕旋转失败: \(error.localizedDescription)")
+                        DLog("屏幕旋转失败: \(error.localizedDescription)")
                     }
                 }
             }
@@ -621,7 +621,7 @@ class VideoPlayerViewController: UIViewController {
         let duration = PlayerManager.shared.getDuration()
         
         // 添加调试信息
-        print("更新进度 - 当前时间: \(currentTime), 总时长: \(duration)")
+        DLog("更新进度 - 当前时间: \(currentTime), 总时长: \(duration)")
         
         if duration > 0 {
             slider.value = Float(currentTime / duration)
@@ -635,7 +635,7 @@ class VideoPlayerViewController: UIViewController {
             }
         } else {
             // 时长为0时的处理
-            print("警告：视频时长为0，可能媒体尚未加载完成")
+            DLog("警告：视频时长为0，可能媒体尚未加载完成")
             // 保持现有显示，不更新进度条
         }
     }
@@ -761,9 +761,9 @@ class VideoPlayerViewController: UIViewController {
             // 明确调用接受TimeInterval参数的seek方法
             playerManager.seek(to: seekTime)
             
-            print("拖动进度条到：\(seekTime)秒，总时长：\(duration)秒")
+            DLog("拖动进度条到：\(seekTime)秒，总时长：\(duration)秒")
         } else {
-            print("警告：视频时长无效，无法定位")
+            DLog("警告：视频时长无效，无法定位")
         }
         
         // 继续播放
@@ -790,7 +790,7 @@ class VideoPlayerViewController: UIViewController {
         let seekTime = Double(slider.value) * duration
 
         // 添加调试日志
-        print("拖动滑块到位置：\(slider.value)，对应时间：\(seekTime)秒")
+        DLog("拖动滑块到位置：\(slider.value)，对应时间：\(seekTime)秒")
 
         // 更新预览
         updatePreview(at: seekTime)

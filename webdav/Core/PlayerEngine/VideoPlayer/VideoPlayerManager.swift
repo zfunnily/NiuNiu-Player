@@ -47,12 +47,12 @@ class VideoPlayerManager {
 
         // 添加视频加载失败处理
         NotificationCenter.default.addObserver(forName: .AVPlayerItemPlaybackStalled, object: playerItem, queue: .main) { _ in
-            print("播放卡顿")
+            DLog("播放卡顿")
         }
         
         NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: playerItem, queue: .main) { notification in
             if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
-                print("播放失败: \(error.localizedDescription)")
+                DLog("播放失败: \(error.localizedDescription)")
                 onFailure?(error)
             }
         }
@@ -74,7 +74,7 @@ class VideoPlayerManager {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("配置音频会话失败: \(error)")
+            DLog("配置音频会话失败: \(error)")
         }
     
         // 监听播放状态变化
@@ -102,7 +102,7 @@ class VideoPlayerManager {
         // 自动播放
         if configuration.autoPlay {
             player.play()
-            print("开始自动播放")
+            DLog("开始自动播放")
 
         }
         
@@ -114,9 +114,9 @@ class VideoPlayerManager {
                     do {
                         let isPlayable = try await playerItem.asset.load(.isPlayable)
                         let tracks = try await playerItem.asset.load(.tracks)
-                        print("资产可播放: \(isPlayable), 轨道数: \(tracks.count)")
+                        DLog("资产可播放: \(isPlayable), 轨道数: \(tracks.count)")
                     } catch {
-                        print("预加载失败: \(error)")
+                        DLog("预加载失败: \(error)")
                     }
                 }
             } else {
@@ -126,7 +126,7 @@ class VideoPlayerManager {
                     
                     var error: NSError?
                     if playerItem.asset.statusOfValue(forKey: "playable", error: &error) == .loaded {
-                        print("资产可播放: \(playerItem.asset.isPlayable)")
+                        DLog("资产可播放: \(playerItem.asset.isPlayable)")
                     }
                 }
             }

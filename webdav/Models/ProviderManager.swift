@@ -39,22 +39,22 @@ class ProviderManager {
     func createClient(for provider: WebDAVProvider) -> WebDAVClient? {
         // 使用displayURL而不是直接使用serverURL，确保URL格式正确
         let urlString = provider.displayURL
-        print("创建客户端，URL: \(urlString)")
+        DLog("创建客户端，URL: \(urlString)")
         guard let url = URL(string: urlString) else {
-            print("URL格式无效")
+            DLog("URL格式无效")
             return nil
         }
 
         // let username = provider.username.isEmpty ? nil : provider.username
         // let password = provider.password.isEmpty ? nil : provider.password
-        // print("使用用户名: \(username ?? "无")，密码长度: \(password?.count ?? 0)")
+        // DLog("使用用户名: \(username ?? "无")，密码长度: \(password?.count ?? 0)")
 
 
         // return WebDAVClient(baseURL: url, username: username, password: password)
         
         let username = provider.username.isEmpty ? nil : provider.username
         let password = provider.getDecryptedPassword()
-        print("使用用户名: \(username ?? "无")，密码长度: \(password.count)")
+        DLog("使用用户名: \(username ?? "无")，密码长度: \(password.count)")
         return WebDAVClient(baseURL: url, username: username, password: password.isEmpty ? nil : password)
     }
     
