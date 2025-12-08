@@ -625,7 +625,7 @@ class VideoPlayerViewController: UIViewController {
         
         if duration > 0 {
             slider.value = Float(currentTime / duration)
-            timeLabel.text = formatTime(currentTime)
+            timeLabel.text = formatTime(Double(slider.value) * duration)
             durationLabel.text = formatTime(duration)
             
             // 如果控制栏应该可见但被隐藏了，重新显示它
@@ -772,9 +772,9 @@ class VideoPlayerViewController: UIViewController {
         updatePlayPauseButton()
         resetControlsTimer()
         
+        updateProgress()
         // 隐藏预览
         previewThumbnailView.isHidden = true
-        updateProgress()
     }
 
     @objc private func sliderTouchCancel() {

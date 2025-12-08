@@ -48,6 +48,9 @@ class PlayerManager {
             let isPlaying = state == .playing
             onPlaybackStateChanged?(isPlaying)
             
+            if state == .loading && onSuccess != nil {
+                onSuccess?()
+            }
             // 加载成功
             if state == .playing && onSuccess != nil {
                 onSuccess?()

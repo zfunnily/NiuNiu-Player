@@ -9,7 +9,7 @@ import Foundation
 import UIKit
 import MobileVLCKit
 
-class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
+class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMediaPlayerDelegate {
     // VLC列表播放器实例
     private var vlcListPlayer: VLCMediaListPlayer?
     private var mediaList: VLCMediaList?
@@ -76,8 +76,11 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
         // 创建列表播放器
         let listPlayer = VLCMediaListPlayer()
         listPlayer.mediaPlayer.drawable = view
-        listPlayer.mediaList = list
+        
         listPlayer.delegate = self
+        listPlayer.mediaPlayer.delegate = self
+        
+        listPlayer.mediaList = list
         
         vlcListPlayer = listPlayer
         updateState(.idle)
@@ -177,7 +180,7 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
                 }
             }
         }
-        
+
         // 确保定时器在RunLoop中运行
         if let timer = durationPollingTimer {
             RunLoop.main.add(timer, forMode: .common)
@@ -233,13 +236,29 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
         
         // 获取当前播放时间 - 使用直接的时间值获取
         let playerTime = mediaPlayer.time
-        if let timeValue = playerTime.value as? Double {
-            self.currentTime = timeValue / 1000.0
-        } else {
-            // 对于非可选类型的intValue，直接使用
-            let intValue = playerTime.intValue
-            self.currentTime = Double(intValue) / 1000.0
+        // 首先尝试使用intValue获取时间（更可靠的方法）
+        let intValue = playerTime.intValue
+        var currentTimeValue = Double(intValue) / 1000.0
+        if currentTimeValue == 0 {
+            if let timeValue = playerTime.value as? Double {
+                currentTimeValue = timeValue / 1000.0
+            }
         }
+        // 如果仍然为0，尝试使用媒体的当前时间（作为最后备选）
+        if currentTimeValue == 0, let media = mediaPlayer.media {
+            let mediaCurrentTime = mediaPlayer.time.intValue
+            currentTimeValue = Double(mediaCurrentTime) / 1000.0
+        }
+        
+        self.currentTime = currentTimeValue
+
+        // if let timeValue = playerTime.value as? Double {
+        //     self.currentTime = timeValue / 1000.0
+        // } else {
+        //     // 对于非可选类型的intValue，直接使用
+        //     let intValue = playerTime.intValue
+        //     self.currentTime = Double(intValue) / 1000.0
+        // }
 
         // 改进的时长获取逻辑，尝试多种方式
         var foundDuration: Double = 0
@@ -249,36 +268,8 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
             let length = media.length.intValue
             if length > 0 {
                 foundDuration = Double(length) / 1000.0
-                print("[方法1] 更新时长: \(foundDuration)秒")
+                print("[方法] 更新时长: \(foundDuration)秒")
             }
-        }
-        
-        // 方法2：使用mediaPlayer.media.length作为备用
-        if foundDuration <= 0, let media = mediaPlayer.media {
-            // 强制重新解析媒体信息
-            media.parse()
-            let length = media.length.intValue
-            if length > 0 {
-                foundDuration = Double(length) / 1000.0
-                print("[方法2] 更新时长: \(foundDuration)秒")
-            }
-        }
-        
-        // 方法3：使用mediaPlayer.mediaPlayer.length (不同的API路径)
-        if foundDuration <= 0, let media = mediaPlayer.media {
-            let length = media.length.intValue
-            if length > 0 {
-                foundDuration = Double(length) / 1000.0
-                print("[方法3] 更新时长: \(foundDuration)秒")
-            }
-        }
-        
-        // 方法4：如果都失败但视频正在播放，使用估算的时长（基于seek功能正常）
-        if foundDuration <= 0 && isPlaying {
-            // 如果已经能成功seek，说明内部有有效的时长信息
-            // 尝试通过seek到10%位置来间接获取时长
-            print("[警告] 无法通过常规方法获取时长，尝试间接方法")
-            // 这里可以添加更高级的间接获取时长的逻辑
         }
         
         // 只有获取到有效时长才更新，避免覆盖已有值
@@ -308,48 +299,85 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate {
         timer = nil
     }
     
-    // VLCMediaListPlayerDelegate方法
-    func mediaListPlayer(_ mediaListPlayer: VLCMediaListPlayer, didChange state: VLCMediaPlayerState) {
-        switch state {
+    func mediaPlayerStateChanged(_ aNotification: Notification!) {
+        guard let player = vlcListPlayer?.mediaPlayer else { return }
+
+        switch player.state {
         case .stopped:
             isPlaying = false
             updateState(.ended)
             stopTimer()
+
         case .playing:
             isPlaying = true
             updateState(.playing)
             startTimer()
-            mediaListPlayer.mediaPlayer.rate = playbackRate
-
-            // 播放开始时尝试更新时长
-            if let media = mediaListPlayer.mediaPlayer.media {
-                media.parse()
-                let length = media.length.intValue
-                if length > 0 {
-                    duration = Double(length) / 1000.0
-                    print("播放开始，更新时长: \(duration)秒")
-                }
-            }
+            player.rate = playbackRate
 
             updateTimeInfo()
+
         case .paused:
             isPlaying = false
             updateState(.paused)
-            // stopTimer()
-            // 暂停时继续更新时间，这样用户可以看到当前播放位置·
+
         case .ended:
             isPlaying = false
             updateState(.ended)
             stopTimer()
+
         case .error:
             isPlaying = false
             updateState(.error)
             onError?(nil)
             stopTimer()
+
         default:
             break
         }
     }
+
+    // VLCMediaListPlayerDelegate方法
+//    func mediaListPlayer(_ mediaListPlayer: VLCMediaListPlayer, didChange state: VLCMediaPlayerState) {
+//        switch state {
+//        case .stopped:
+//            isPlaying = false
+//            updateState(.ended)
+//            stopTimer()
+//        case .playing:
+//            isPlaying = true
+//            updateState(.playing)
+//            startTimer()
+//            mediaListPlayer.mediaPlayer.rate = playbackRate
+//
+//            // 播放开始时尝试更新时长
+//            if let media = mediaListPlayer.mediaPlayer.media {
+//                media.parse()
+//                let length = media.length.intValue
+//                if length > 0 {
+//                    duration = Double(length) / 1000.0
+//                    print("播放开始，更新时长: \(duration)秒")
+//                }
+//            }
+//
+//            updateTimeInfo()
+//        case .paused:
+//            isPlaying = false
+//            updateState(.paused)
+//            // stopTimer()
+//            // 暂停时继续更新时间，这样用户可以看到当前播放位置·
+//        case .ended:
+//            isPlaying = false
+//            updateState(.ended)
+//            stopTimer()
+//        case .error:
+//            isPlaying = false
+//            updateState(.error)
+//            onError?(nil)
+//            stopTimer()
+//        default:
+//            break
+//        }
+//    }
     
     func mediaListPlayer(_ mediaListPlayer: VLCMediaListPlayer, mediaPlayerTimeChanged currentTime: VLCTime, duration: VLCTime) {
         // 确保值有效再更新
