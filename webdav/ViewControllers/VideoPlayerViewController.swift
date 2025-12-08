@@ -774,6 +774,7 @@ class VideoPlayerViewController: UIViewController {
         
         // 隐藏预览
         previewThumbnailView.isHidden = true
+        updateProgress()
     }
 
     @objc private func sliderTouchCancel() {
