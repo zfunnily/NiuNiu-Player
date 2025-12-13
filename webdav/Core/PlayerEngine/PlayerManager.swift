@@ -109,6 +109,9 @@ class PlayerManager {
     func setVolume(_ volume: Float) {
         currentEngine?.setVolume(volume)
     }
+    func getVolume() -> Float {
+        return currentEngine?.getVolume() ?? 0
+    }
     
     func updateVideoGravity(_ gravity: VideoGravity) {
         currentEngine?.setVideoGravity(gravity)

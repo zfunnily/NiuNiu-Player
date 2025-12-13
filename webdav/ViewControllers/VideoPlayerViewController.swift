@@ -79,6 +79,18 @@ class VideoPlayerViewController: UIViewController {
     private var seekHintLabel: UILabel?
     private let seekSensitivity: CGFloat = 2.0 // 滑动敏感度，值越大，滑动相同距离快进越多
     private let maxSeekSeconds: TimeInterval = 60 // 最大快进/快退秒数
+
+    // 亮度和音量调节相关属性
+    private var initialBrightness: Float = 0
+    private var initialVolume: Float = 0
+    private var brightnessHintLabel: UILabel?
+    private var volumeHintLabel: UILabel?
+    private let brightnessSensitivity: CGFloat = 0.001 // 亮度调节敏感度
+    private let volumeSensitivity: CGFloat = 0.002 // 音量调节敏感度
+
+    // 添加辅助属性
+    private var isAdjustingBrightness = false
+    private var isAdjustingVolume = false
     
     init(videoSource: VideoSource) {
         self.videoSource = videoSource
@@ -885,53 +897,151 @@ class VideoPlayerViewController: UIViewController {
         let currentPosition = gesture.location(in: view)
         let translation = gesture.translation(in: view)
         let screenWidth = view.bounds.width
+        let screenHeight = view.bounds.height
         
         switch gesture.state {
         case .began:
-            // 开始滑动，记录初始位置和播放时间
+            // 开始滑动，只记录初始位置和参数
             initialTouchPosition = currentPosition
             initialPlaybackTime = playerManager.getCurrentTime()
-            isSeeking = true
+            initialBrightness = Float(UIScreen.main.brightness)
+            initialVolume = playerManager.getVolume()
             
-            // 创建并显示快进/快退提示
-            showSeekHint(seconds: 0)
+            // 重置所有状态标志
+            isSeeking = false
+            isAdjustingBrightness = false
+            isAdjustingVolume = false
             
         case .changed:
-            // 计算滑动距离（只考虑水平方向）
-            let horizontalDistance = translation.x
-            let screenRatio = abs(horizontalDistance) / screenWidth
-            
-            // 根据滑动距离计算快进/快退的秒数
-            var seekSeconds = screenRatio * seekSensitivity * maxSeekSeconds
-            seekSeconds = min(seekSeconds, maxSeekSeconds) // 限制最大快进/快退秒数
-            
-            // 根据滑动方向确定是快进还是快退
-            if horizontalDistance < 0 {
-                seekSeconds = -seekSeconds // 向左滑动是快退
+            if !isSeeking && !isAdjustingBrightness && !isAdjustingVolume {
+                // 第一次检测到滑动，确定滑动类型
+                if abs(translation.x) > abs(translation.y) {
+                    // 水平滑动，处理快进快退
+                    isSeeking = true
+                    showSeekHint(seconds: 0)
+                } else {
+                    // 垂直滑动，处理亮度或音量
+                    if currentPosition.x < screenWidth / 2 {
+                        // 左边屏幕，调节亮度
+                        isAdjustingBrightness = true
+                        showBrightnessHint(brightness: initialBrightness)
+                    } else {
+                        // 右边屏幕，调节音量
+                        isAdjustingVolume = true
+                        showVolumeHint(volume: initialVolume)
+                    }
+                }
             }
             
-            // 计算新的播放时间
-            var newTime = initialPlaybackTime + seekSeconds
-            let duration = playerManager.getDuration()
-            
-            // 确保不超出视频范围
-            newTime = max(0, min(newTime, duration))
-            
-            // 更新快进/快退提示
-            showSeekHint(seconds: seekSeconds)
-            
-            // 实时更新播放位置
-            playerManager.seek(to: newTime)
+            if isSeeking {
+                // 计算滑动距离（只考虑水平方向）
+                let horizontalDistance = translation.x
+                let screenRatio = abs(horizontalDistance) / screenWidth
+                
+                // 根据滑动距离计算快进/快退的秒数
+                var seekSeconds = screenRatio * seekSensitivity * maxSeekSeconds
+                seekSeconds = min(seekSeconds, maxSeekSeconds) // 限制最大快进/快退秒数
+                
+                // 根据滑动方向确定是快进还是快退
+                if horizontalDistance < 0 {
+                    seekSeconds = -seekSeconds // 向左滑动是快退
+                }
+                
+                // 计算新的播放时间
+                var newTime = initialPlaybackTime + seekSeconds
+                let duration = playerManager.getDuration()
+                
+                // 确保不超出视频范围
+                newTime = max(0, min(newTime, duration))
+                
+                // 更新快进/快退提示
+                showSeekHint(seconds: seekSeconds)
+                
+                // 实时更新播放位置
+                playerManager.seek(to: newTime)
+            } else if isAdjustingBrightness {
+                // 调节亮度
+                let verticalDistance = translation.y
+                let brightnessChange = -verticalDistance * brightnessSensitivity
+                var newBrightness = initialBrightness + Float(brightnessChange)
+                
+                // 限制亮度范围在0.0-1.0之间
+                newBrightness = max(0.0, min(1.0, newBrightness))
+                
+                // 更新屏幕亮度
+                UIScreen.main.brightness = CGFloat(newBrightness)
+                
+                // 更新亮度提示
+                showBrightnessHint(brightness: newBrightness)
+            } else if isAdjustingVolume {
+                // 调节音量
+                let verticalDistance = translation.y
+                let volumeChange = -verticalDistance * volumeSensitivity
+                var newVolume = initialVolume + Float(volumeChange)
+                
+                // 限制音量范围在0.0-1.0之间
+                newVolume = max(0.0, min(1.0, newVolume))
+                
+                // 更新音量
+                playerManager.setVolume(newVolume)
+                
+                // 更新音量提示
+                showVolumeHint(volume: newVolume)
+            }
             
         case .ended, .cancelled, .failed:
             // 滑动结束，隐藏提示
-            hideSeekHint()
-            isSeeking = false
+            if isSeeking {
+                hideSeekHint()
+                isSeeking = false
+            } else if isAdjustingBrightness {
+                hideBrightnessHint()
+                isAdjustingBrightness = false
+            } else if isAdjustingVolume {
+                hideVolumeHint()
+                isAdjustingVolume = false
+            }
             
         default:
             break
         }
     }
+
+    private func showBrightnessHint(brightness: Float) {
+        // 如果提示标签不存在，创建它
+        if brightnessHintLabel == nil {
+            brightnessHintLabel = UILabel()
+            brightnessHintLabel?.textColor = .white
+            brightnessHintLabel?.font = UIFont.boldSystemFont(ofSize: 36)
+            brightnessHintLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+            brightnessHintLabel?.layer.cornerRadius = 10
+            brightnessHintLabel?.clipsToBounds = true
+            brightnessHintLabel?.textAlignment = .center
+            brightnessHintLabel?.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(brightnessHintLabel!)
+            
+            // 设置约束（左上角）
+            NSLayoutConstraint.activate([
+                brightnessHintLabel!.topAnchor.constraint(equalTo: view.topAnchor, constant: 100),
+                brightnessHintLabel!.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 50),
+                brightnessHintLabel!.paddingHorizontal(constant: 30),
+                brightnessHintLabel!.paddingVertical(constant: 15)
+            ])
+            
+            // 初始隐藏
+            brightnessHintLabel?.alpha = 0
+        }
+        
+        // 设置提示文本（亮度百分比）
+        let brightnessPercentage = Int(brightness * 100)
+        brightnessHintLabel?.text = "🌞 \(brightnessPercentage)%"
+        
+        // 显示动画
+        UIView.animate(withDuration: 0.3) {
+            self.brightnessHintLabel?.alpha = 1.0
+        }
+    }
+
 
     private func showSeekHint(seconds: TimeInterval) {
     // 如果提示标签不存在，创建它
@@ -978,13 +1088,58 @@ class VideoPlayerViewController: UIViewController {
     }
 }
 
-private func hideSeekHint() {
-    UIView.animate(withDuration: 0.3) {
-        self.seekHintLabel?.alpha = 0.0
+    private func hideSeekHint() {
+        UIView.animate(withDuration: 0.3) {
+            self.seekHintLabel?.alpha = 0.0
+        }
     }
-}
 
+    private func showVolumeHint(volume: Float) {
+        // 如果提示标签不存在，创建它
+        if volumeHintLabel == nil {
+            volumeHintLabel = UILabel()
+            volumeHintLabel?.textColor = .white
+            volumeHintLabel?.font = UIFont.boldSystemFont(ofSize: 36)
+            volumeHintLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+            volumeHintLabel?.layer.cornerRadius = 10
+            volumeHintLabel?.clipsToBounds = true
+            volumeHintLabel?.textAlignment = .center
+            volumeHintLabel?.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(volumeHintLabel!)
+            
+            // 设置约束（右上角）
+            NSLayoutConstraint.activate([
+                volumeHintLabel!.topAnchor.constraint(equalTo: view.topAnchor, constant: 100),
+                volumeHintLabel!.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -50),
+                volumeHintLabel!.paddingHorizontal(constant: 30),
+                volumeHintLabel!.paddingVertical(constant: 15)
+            ])
+            
+            // 初始隐藏
+            volumeHintLabel?.alpha = 0
+        }
+        
+        // 设置提示文本（音量百分比）
+        let volumePercentage = Int(volume * 100)
+        volumeHintLabel?.text = "🔊 \(volumePercentage)%"
+        
+        // 显示动画
+        UIView.animate(withDuration: 0.3) {
+            self.volumeHintLabel?.alpha = 1.0
+        }
+    }
 
+    private func hideBrightnessHint() {
+        UIView.animate(withDuration: 0.3) {
+            self.brightnessHintLabel?.alpha = 0.0
+        }
+    }
+
+    private func hideVolumeHint() {
+        UIView.animate(withDuration: 0.3) {
+            self.volumeHintLabel?.alpha = 0.0
+        }
+    }
 }
 
 fileprivate extension UIView {

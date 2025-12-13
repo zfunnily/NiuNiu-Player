@@ -38,6 +38,7 @@ protocol PlayerEngine: AnyObject {
     func setVideoURL(_ url: URL)
     func setVideoGravity(_ gravity: VideoGravity)
     func setVolume(_ volume: Float)
+    func getVolume() -> Float
     func setLoopEnabled(_ isEnabled: Bool)
     
     // 回调设置

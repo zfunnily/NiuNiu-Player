@@ -219,6 +219,14 @@ class VLCPlayerEngine: NSObject, PlayerEngine, VLCMediaListPlayerDelegate, VLCMe
         }
     }
     
+    func getVolume() -> Float {
+        guard let listPlayer = vlcListPlayer else { return 0 }
+        if let audio = listPlayer.mediaPlayer.audio {
+            return Float(audio.volume) / 100.0  // 转换为0-1范围
+        }
+        return 0
+    }
+    
     func setLoopEnabled(_ isEnabled: Bool) {
         // 使用VLCMediaListPlayer的repeatMode实现循环播放
         vlcListPlayer?.repeatMode = isEnabled ? .repeatCurrentItem : .doNotRepeat

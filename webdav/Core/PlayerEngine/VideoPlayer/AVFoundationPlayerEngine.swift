@@ -111,6 +111,10 @@ class AVFoundationPlayerEngine: NSObject, PlayerEngine {
         playerManager.setVolume(volume)
     }
     
+    func getVolume() -> Float {
+        return playerManager.getVolume()
+    }
+
     func setLoopEnabled(_ isEnabled: Bool) {
         // VideoPlayerManager已经支持循环播放，这里只是保持接口一致
     }

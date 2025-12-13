@@ -169,7 +169,9 @@ class VideoPlayerManager {
     func setVolume(_ volume: Float) {
         currentPlayer?.volume = volume
     }
-    
+    func getVolume() -> Float {
+        return currentPlayer?.volume ?? 0
+    }
     // 清理资源
     func cleanupPreviousPlayer() {
         // 移除通知观察

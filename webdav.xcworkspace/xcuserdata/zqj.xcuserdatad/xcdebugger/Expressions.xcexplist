@@ -19,5 +19,13 @@
       <ContextState
          contextName = "WebDAVClient.createRequest(for:method:):WebDAVClient.swift">
       </ContextState>
+      <ContextState
+         contextName = "VideoPlayerViewController.handlePanGesture(_:):VideoPlayerViewController.swift">
+         <PersistentStrings>
+            <PersistentString
+               value = "initialVolume">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
    </ContextStates>
 </VariablesViewState>
