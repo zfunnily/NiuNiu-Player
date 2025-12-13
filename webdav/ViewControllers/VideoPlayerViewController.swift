@@ -70,6 +70,15 @@ class VideoPlayerViewController: UIViewController {
     // 长按手势识别器
     private var longPressGesture: UILongPressGestureRecognizer!
     private var speedHintLabel: UILabel?
+
+    // 滑动手势相关属性
+    private var panGesture: UIPanGestureRecognizer!
+    private var initialTouchPosition: CGPoint = .zero
+    private var initialPlaybackTime: TimeInterval = 0
+    private var isSeeking = false
+    private var seekHintLabel: UILabel?
+    private let seekSensitivity: CGFloat = 2.0 // 滑动敏感度，值越大，滑动相同距离快进越多
+    private let maxSeekSeconds: TimeInterval = 60 // 最大快进/快退秒数
     
     init(videoSource: VideoSource) {
         self.videoSource = videoSource
@@ -138,6 +147,8 @@ class VideoPlayerViewController: UIViewController {
 
         // 移除方向监听
         NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
+        // 清理滑动手势相关资源
+        hideSeekHint()
     }
     
     // 添加旋转支持
@@ -375,6 +386,11 @@ class VideoPlayerViewController: UIViewController {
         longPressGesture.minimumPressDuration = 0.2 // 长按触发时间，单位秒
         longPressGesture.cancelsTouchesInView = false // 不取消其他手势
         view.addGestureRecognizer(longPressGesture)
+
+        // 添加滑动手势实现快进快退
+        panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePanGesture))
+        panGesture.cancelsTouchesInView = false
+        view.addGestureRecognizer(panGesture)
     }
     
     @objc private func doubleTapToToggleFullscreen() {
@@ -864,6 +880,110 @@ class VideoPlayerViewController: UIViewController {
         // 可选：取消自动隐藏计时器
         controlsTimer?.invalidate()
     }
+
+    @objc private func handlePanGesture(_ gesture: UIPanGestureRecognizer) {
+        let currentPosition = gesture.location(in: view)
+        let translation = gesture.translation(in: view)
+        let screenWidth = view.bounds.width
+        
+        switch gesture.state {
+        case .began:
+            // 开始滑动，记录初始位置和播放时间
+            initialTouchPosition = currentPosition
+            initialPlaybackTime = playerManager.getCurrentTime()
+            isSeeking = true
+            
+            // 创建并显示快进/快退提示
+            showSeekHint(seconds: 0)
+            
+        case .changed:
+            // 计算滑动距离（只考虑水平方向）
+            let horizontalDistance = translation.x
+            let screenRatio = abs(horizontalDistance) / screenWidth
+            
+            // 根据滑动距离计算快进/快退的秒数
+            var seekSeconds = screenRatio * seekSensitivity * maxSeekSeconds
+            seekSeconds = min(seekSeconds, maxSeekSeconds) // 限制最大快进/快退秒数
+            
+            // 根据滑动方向确定是快进还是快退
+            if horizontalDistance < 0 {
+                seekSeconds = -seekSeconds // 向左滑动是快退
+            }
+            
+            // 计算新的播放时间
+            var newTime = initialPlaybackTime + seekSeconds
+            let duration = playerManager.getDuration()
+            
+            // 确保不超出视频范围
+            newTime = max(0, min(newTime, duration))
+            
+            // 更新快进/快退提示
+            showSeekHint(seconds: seekSeconds)
+            
+            // 实时更新播放位置
+            playerManager.seek(to: newTime)
+            
+        case .ended, .cancelled, .failed:
+            // 滑动结束，隐藏提示
+            hideSeekHint()
+            isSeeking = false
+            
+        default:
+            break
+        }
+    }
+
+    private func showSeekHint(seconds: TimeInterval) {
+    // 如果提示标签不存在，创建它
+    if seekHintLabel == nil {
+        seekHintLabel = UILabel()
+        seekHintLabel?.textColor = .white
+        seekHintLabel?.font = UIFont.boldSystemFont(ofSize: 36)
+        seekHintLabel?.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        seekHintLabel?.layer.cornerRadius = 10
+        seekHintLabel?.clipsToBounds = true
+        seekHintLabel?.textAlignment = .center
+        seekHintLabel?.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(seekHintLabel!)
+        
+        // 设置约束
+        NSLayoutConstraint.activate([
+            seekHintLabel!.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            seekHintLabel!.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            seekHintLabel!.paddingHorizontal(constant: 30),
+            seekHintLabel!.paddingVertical(constant: 15)
+        ])
+        
+        // 初始隐藏
+        seekHintLabel?.alpha = 0
+    }
+    
+    // 设置提示文本
+    let sign = seconds > 0 ? "→" : "←"
+    let absSeconds = abs(seconds)
+    let minutes = Int(absSeconds / 60)
+    let remainingSeconds = Int(absSeconds) % 60
+    if minutes > 0 {
+        seekHintLabel?.text = "\(sign) \(minutes):\(remainingSeconds < 10 ? "0" : "")\(remainingSeconds)"
+    } else {
+        seekHintLabel?.text = "\(sign) \(remainingSeconds)s"
+    }
+    
+    // 设置文本颜色（快进为绿色，快退为红色）
+    seekHintLabel?.textColor = seconds > 0 ? .green : .red
+    
+    // 显示动画
+    UIView.animate(withDuration: 0.3) {
+        self.seekHintLabel?.alpha = 1.0
+    }
+}
+
+private func hideSeekHint() {
+    UIView.animate(withDuration: 0.3) {
+        self.seekHintLabel?.alpha = 0.0
+    }
+}
+
 
 }
 

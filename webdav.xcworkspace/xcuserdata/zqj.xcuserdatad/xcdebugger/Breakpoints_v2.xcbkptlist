@@ -224,7 +224,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "753"
             endingLineNumber = "753"
-            landmarkName = "sliderTouchEnded()"
+            landmarkName = "playPauseTapped()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -240,7 +240,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "804"
             endingLineNumber = "804"
-            landmarkName = "updatePreview(at:)"
+            landmarkName = "sliderValueChanged()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -256,8 +256,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "733"
             endingLineNumber = "733"
-            landmarkName = "playPauseTapped()"
-            landmarkType = "7">
+            landmarkName = "VideoPlayerViewController"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -320,7 +320,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "628"
             endingLineNumber = "628"
-            landmarkName = "updateProgress()"
+            landmarkName = "deinit"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -352,7 +352,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "593"
             endingLineNumber = "593"
-            landmarkName = "setupProgressUpdate()"
+            landmarkName = "playVideo()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -368,7 +368,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "563"
             endingLineNumber = "563"
-            landmarkName = "playVideo()"
+            landmarkName = "updateVideoGravity()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -384,7 +384,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "568"
             endingLineNumber = "568"
-            landmarkName = "playVideo()"
+            landmarkName = "updateVideoGravity()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
